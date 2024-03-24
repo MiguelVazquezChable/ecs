@@ -1,10 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Plantilla CloudFormation para ECS Fargate con integración de Secrets Manager y conexión a MariaDB.
+Description: Plantilla CloudFormation para ECS Fargate con integración de Secrets Manager, conexión a MariaDB y servicio HTTPD.
 
 Resources:
   # ECS Cluster
   ECSCluster:
     Type: AWS::ECS::Cluster
+
+  # (Opcional) Repositorio ECR para la imagen HTTPD
+  HTTPDRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: "arces-web-repo"
 
   # ECS Task Definition
   ECSTaskDefinition:
@@ -19,8 +25,8 @@ Resources:
       ExecutionRoleArn: !ImportValue ECSExecutionRoleArn
       TaskRoleArn: !ImportValue ECSTaskRoleArn
       ContainerDefinitions:
-        - Name: "my-container"
-          Image: "mi-imagen-de-contenedor" # Reemplaza con tu imagen de contenedor
+        - Name: "httpd-container"
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/arces-web-repo:latest"
           PortMappings:
             - ContainerPort: 80
           Secrets:
@@ -50,28 +56,6 @@ Resources:
             - !ImportValue SecurityGroupId
       DesiredCount: 1
 
-  # Actualización del Rol de la Tarea de ECS para acceso a Secrets Manager
-  ECSTaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Path: "/"
-      Policies:
-        - PolicyName: "ECSTaskPolicy"
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - secretsmanager:GetSecretValue
-                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-*'
-
 Outputs:
   ECSClusterName:
     Description: "Nombre del Cluster de ECS"
@@ -84,3 +68,7 @@ Outputs:
   ECSServiceName:
     Description: "Nombre del servicio ECS"
     Value: !Ref ECSService
+
+  ECRRepositoryURI:
+    Description: "URI del repositorio ECR para HTTPD"
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/arces-web-repo"
