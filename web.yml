@@ -16,8 +16,8 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      ExecutionRoleArn: !ImportValue ECSExecutionRoleArn
-      TaskRoleArn: !ImportValue ECSTaskRoleArn
+      ExecutionRoleArn: !ImportValue ECSExecutionRole
+      TaskRoleArn: !ImportValue ECSTaskRole
       ContainerDefinitions:
         - Name: "httpd-container"
           Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/arces-web-repo:latest"
