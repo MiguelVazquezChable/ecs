@@ -6,6 +6,36 @@ Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
 
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+        - !ImportValue PublicSubnet1Id
+        - !ImportValue PublicSubnet2Id
+      SecurityGroups:
+        - !ImportValue LoadBalancerSecurityGroupId
+
+  # Target Group for ECS Service
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      VpcId: !ImportValue VPCId
+      TargetType: ip
+
+  # Listener for the Application Load Balancer
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
   # ECS Task Definition
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -54,36 +84,6 @@ Resources:
           ContainerPort: 80
           TargetGroupArn: !Ref TargetGroup
 
-  # Target Group for ECS Service
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Port: 80
-      Protocol: HTTP
-      VpcId: !ImportValue VPCId
-      TargetType: ip
-
-  # Application Load Balancer
-  ApplicationLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Subnets:
-        - !ImportValue PublicSubnet1Id
-        - !ImportValue PublicSubnet2Id
-      SecurityGroups:
-        - !ImportValue LoadBalancerSecurityGroupId
-
-  # Listener for the Application Load Balancer
-  Listener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Protocol: HTTP
-      Port: 80
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
-
 Outputs:
   ECSClusterName:
     Description: "Name of the ECS Cluster"
@@ -96,10 +96,6 @@ Outputs:
   ECSServiceName:
     Description: "Name of the ECS Service"
     Value: !Ref ECSService
-
-  ECRRepositoryURI:
-    Description: "URI of the ECR repository for HTTPD"
-    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/arces-web-repo"
 
   LoadBalancerDNS:
     Description: "DNS name of the Load Balancer"
