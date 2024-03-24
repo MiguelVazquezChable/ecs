@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Plantilla CloudFormation para ECS Fargate con integración de Secrets Manager, conexión a MariaDB y servicio HTTPD.
+Description: CloudFormation template for ECS Fargate with Secrets Manager, MariaDB, HTTPD service, and ALB.
 
 Resources:
   # ECS Cluster
@@ -63,30 +63,44 @@ Resources:
       VpcId: !ImportValue VPCId
       TargetType: ip
 
-  # Application Load Balancer Listener
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+        - !ImportValue PublicSubnet1Id
+        - !ImportValue PublicSubnet2Id
+      SecurityGroups:
+        - !ImportValue LoadBalancerSecurityGroupId
+
+  # Listener for the Application Load Balancer
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
-      LoadBalancerArn: !ImportValue LoadBalancerArn
-      Port: 80
-      Protocol: HTTP
 
 Outputs:
   ECSClusterName:
-    Description: "Nombre del Cluster de ECS"
+    Description: "Name of the ECS Cluster"
     Value: !Ref ECSCluster
 
   ECSTaskDefinitionArn:
-    Description: "ARN de la definición de la tarea ECS"
+    Description: "ARN of the ECS Task Definition"
     Value: !Ref ECSTaskDefinition
 
   ECSServiceName:
-    Description: "Nombre del servicio ECS"
+    Description: "Name of the ECS Service"
     Value: !Ref ECSService
 
   ECRRepositoryURI:
-    Description: "URI del repositorio ECR para HTTPD"
+    Description: "URI of the ECR repository for HTTPD"
     Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/arces-web-repo"
+
+  LoadBalancerDNS:
+    Description: "DNS name of the Load Balancer"
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
