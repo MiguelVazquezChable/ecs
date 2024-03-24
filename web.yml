@@ -6,19 +6,13 @@ Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
 
-  # (Opcional) Repositorio ECR para la imagen HTTPD
-  HTTPDRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: "arces-web-repo"
-
   # ECS Task Definition
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: "my-ecs-task"
-      Cpu: "256" # Configura según tus necesidades
-      Memory: "512" # Configura según tus necesidades
+      Cpu: "256"
+      Memory: "512"
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -50,11 +44,35 @@ Resources:
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets:
-            - !ImportValue PublicSubnet1Id
-            - !ImportValue PublicSubnet2Id
+            - !ImportValue PrivateSubnet1Id
+            - !ImportValue PrivateSubnet2Id
           SecurityGroups:
-            - !ImportValue SecurityGroupId
+            - !ImportValue AppSecurityGroupId
       DesiredCount: 1
+      LoadBalancers:
+        - ContainerName: "httpd-container"
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+
+  # Target Group for ECS Service
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      VpcId: !ImportValue VPCId
+      TargetType: ip
+
+  # Application Load Balancer Listener
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !ImportValue LoadBalancerArn
+      Port: 80
+      Protocol: HTTP
 
 Outputs:
   ECSClusterName:
