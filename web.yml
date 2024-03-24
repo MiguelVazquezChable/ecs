@@ -4,6 +4,7 @@ Description: CloudFormation template for ECS Fargate with Secrets Manager, Maria
 Parameters:
   ServiceName:
     Type: String
+    Default: ArcesECSService
     Description: The name of the ECS service to create.
   HealthCheckPath:
     Type: String
