@@ -96,13 +96,13 @@ Resources:
             - ContainerPort: 80
           Secrets:
             - Name: DATABASE_HOST
-              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-host'
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
             - Name: DATABASE_USER
-              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-username'
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
             - Name: DATABASE_PASSWORD
-              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-password'
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
             - Name: DATABASE_NAME
-              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-dbname'
+              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
 
   # ECS Service
   ECSService:
