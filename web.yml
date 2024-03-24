@@ -1,9 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Plantilla CloudFormation para crear una VPC y un servicio de ECS Fargate.
+Description: Plantilla CloudFormation para ECS Fargate con integración de Secrets Manager y conexión a MariaDB.
 
 Resources:
-  # [ Tus Recursos de VPC existentes aquí ]
-
   # ECS Cluster
   ECSCluster:
     Type: AWS::ECS::Cluster
@@ -12,50 +10,47 @@ Resources:
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: "mi-app-fargate"
-      Cpu: "256" # 0.25 vCPU
-      Memory: "512" # 512 MB
-      NetworkMode: "awsvpc"
+      Family: "my-ecs-task"
+      Cpu: "256" # Configura según tus necesidades
+      Memory: "512" # Configura según tus necesidades
+      NetworkMode: awsvpc
       RequiresCompatibilities:
-        - "FARGATE"
-      ExecutionRoleArn: !Ref ECSExecutionRole
-      TaskRoleArn: !Ref ECSTaskRole
+        - FARGATE
+      ExecutionRoleArn: !ImportValue ECSExecutionRoleArn
+      TaskRoleArn: !ImportValue ECSTaskRoleArn
       ContainerDefinitions:
-        - Name: "mi-app"
-          Image: "mi-imagen-de-app:latest" # Reemplaza con el nombre de tu imagen
+        - Name: "my-container"
+          Image: "mi-imagen-de-contenedor" # Reemplaza con tu imagen de contenedor
           PortMappings:
             - ContainerPort: 80
+          Secrets:
+            - Name: DATABASE_HOST
+              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-host'
+            - Name: DATABASE_USER
+              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-username'
+            - Name: DATABASE_PASSWORD
+              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-password'
+            - Name: DATABASE_NAME
+              ValueFrom: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-dbname'
 
-  # ECS Execution Role
-  ECSExecutionRole:
-    Type: AWS::IAM::Role
+  # ECS Service
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: ECSTaskDefinition
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ecs-tasks.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: "/"
-      Policies:
-        - PolicyName: "ECSTaskExecutionPolicy"
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecr:GetAuthorizationToken
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchGetImage
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: "*"
+      Cluster: !Ref ECSCluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref ECSTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !ImportValue PublicSubnet1Id
+            - !ImportValue PublicSubnet2Id
+          SecurityGroups:
+            - !ImportValue SecurityGroupId
+      DesiredCount: 1
 
-  # ECS Task Role
+  # Actualización del Rol de la Tarea de ECS para acceso a Secrets Manager
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
@@ -64,38 +59,28 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - ecs-tasks.amazonaws.com
-            Action:
-              - sts:AssumeRole
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
       Path: "/"
       Policies:
-        - PolicyName: "ECSTaskRolePolicy"
+        - PolicyName: "ECSTaskPolicy"
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - ecs:*
-                Resource: "*"
-
-  # ECS Service
-  ECSService:
-    Type: AWS::ECS::Service
-    DependsOn: "ECSTaskDefinition"
-    Properties:
-      Cluster: !Ref ECSCluster
-      TaskDefinition: !Ref ECSTaskDefinition
-      LaunchType: "FARGATE"
-      DesiredCount: 1
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          Subnets:
-            - !Ref PublicSubnet1
-            - !Ref PublicSubnet2
-          SecurityGroups:
-            - !GetAtt SecurityGroup.GroupId
-          AssignPublicIp: "ENABLED"
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:mariadb-secrets-dev-*'
 
 Outputs:
-  # [ Tus outputs aquí si es necesario ]
+  ECSClusterName:
+    Description: "Nombre del Cluster de ECS"
+    Value: !Ref ECSCluster
+
+  ECSTaskDefinitionArn:
+    Description: "ARN de la definición de la tarea ECS"
+    Value: !Ref ECSTaskDefinition
+
+  ECSServiceName:
+    Description: "Nombre del servicio ECS"
+    Value: !Ref ECSService
