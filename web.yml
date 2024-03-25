@@ -94,15 +94,6 @@ Resources:
           Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/arces-web-repo:latest"
           PortMappings:
             - ContainerPort: 80
-          Secrets:
-            - Name: DATABASE_HOST
-              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
-            - Name: DATABASE_USER
-              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
-            - Name: DATABASE_PASSWORD
-              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
-            - Name: DATABASE_NAME
-              ValueFrom: !Sub 'arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre'
 
   # ECS Service
   ECSService:
