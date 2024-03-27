@@ -1,23 +1,54 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CloudFormation template for ECS Fargate with Secrets Manager, MariaDB, HTTPD service, and ALB.
-
-Parameters:
-  ServiceName:
-    Type: String
-    Default: lb
-    Description: The name of the ECS service to create.
-  HealthCheckPath:
-    Type: String
-    Default: "/"
-    Description: The health check path for the target group.
+Description: Plantilla CloudFormation para desplegar un servicio ECS Fargate para un sitio web.
 
 Resources:
-  # ECS Cluster
   ECSCluster:
     Type: AWS::ECS::Cluster
 
-  # Application Load Balancer
-  ApplicationLoadBalancer:
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: "web-app"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !ImportValue ECSExecutionRole
+      TaskRoleArn: !ImportValue ECSTaskRole
+      Cpu: "256"
+      Memory: "512"
+      ContainerDefinitions:
+        - Name: "web-container"
+          Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/arces-web-repo"
+          PortMappings:
+            - ContainerPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: "ecs-logs"
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: "ecs"
+
+  ECSFargateService:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !ImportValue PublicSubnet1Id
+            - !ImportValue PublicSubnet2Id
+          SecurityGroups:
+            - !ImportValue AppSecurityGroupId
+      LoadBalancers:
+        - ContainerName: "web-container"
+          ContainerPort: 80
+          TargetGroupArn: !Ref ECSFargateTargetGroup
+
+  LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Subnets:
@@ -25,130 +56,31 @@ Resources:
         - !ImportValue PublicSubnet2Id
       SecurityGroups:
         - !ImportValue LoadBalancerSecurityGroupId
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: 60
-      Name: !Join ["-", [!Ref ServiceName, "ApplicationLoadBalancer"]]
-      Scheme: internet-facing
 
-  # Target Group for ECS Service
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 10
-      HealthCheckPath: !Ref HealthCheckPath
-      HealthCheckTimeoutSeconds: 5
-      UnhealthyThresholdCount: 2
-      HealthyThresholdCount: 2
-      Name: !Join ["-", [!Ref ServiceName, "TargetGroup"]]
-      Port: 80
-      Protocol: HTTP
-      TargetType: ip
-      VpcId: !ImportValue VPCId
-      Matcher:
-        HttpCode: 200
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: 60
-
-  # Listener for the Application Load Balancer
-  ALBHTTPListener:
+  LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
       DefaultActions:
-        - FixedResponseConfig:
-            StatusCode: 200
-          Type: fixed-response
+        - Type: forward
+          TargetGroupArn: !Ref ECSFargateTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
 
-  # Listener Rule
-  ListenerRule:
-    Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
+  ECSFargateTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Actions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
-      Conditions:
-        - Field: path-pattern
-          Values:
-            - "*"
-      ListenerArn: !Ref ALBHTTPListener
-      Priority: 1
-
-  # ECS Task Definition
-  ECSTaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Ref ServiceName
-      Cpu: "256"
-      Memory: "512"
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn: !ImportValue ECSExecutionRole
-      TaskRoleArn: !ImportValue ECSTaskRole
-      ContainerDefinitions:
-        - Name: "httpd-container"
-          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/arces-web-repo:latest"
-          PortMappings:
-            - ContainerPort: 80
-
-  # ECS Service
-  ECSService:
-    Type: AWS::ECS::Service
-    DependsOn:
-      - ApplicationLoadBalancer
-      - ALBHTTPListener
-      - ListenerRule
-      - TargetGroup
-    Properties:
-      ServiceName: !Ref ServiceName
-      Cluster: !Ref ECSCluster
-      TaskDefinition: !Ref ECSTaskDefinition
-      DeploymentConfiguration:
-        MinimumHealthyPercent: 100
-        MaximumPercent: 200
-      DesiredCount: 2  # Adjust as necessary
-      HealthCheckGracePeriodSeconds: 300
-      LaunchType: FARGATE
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets:
-            - !ImportValue PrivateSubnet1Id
-            - !ImportValue PrivateSubnet2Id
-          SecurityGroups:
-            - !ImportValue AppSecurityGroupId
-      LoadBalancers:
-        - ContainerName: "httpd-container"
-          ContainerPort: 80
-          TargetGroupArn: !Ref TargetGroup
-
-  # CloudWatch Log Group
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Join ["", [/ecs/, !Ref ServiceName]]
+      Port: 80
+      Protocol: HTTP
+      VpcId: !ImportValue VPCId
 
 Outputs:
   ECSClusterName:
-    Description: "Name of the ECS Cluster"
+    Description: "Nombre del cluster ECS"
     Value: !Ref ECSCluster
-
-  ECSTaskDefinitionArn:
-    Description: "ARN of the ECS Task Definition"
-    Value: !Ref ECSTaskDefinition
-
-  ECSServiceName:
-    Description: "Name of the ECS Service"
-    Value: !Ref ECSService
-
+  ECSFargateServiceArn:
+    Description: "ARN del servicio ECS Fargate"
+    Value: !Ref ECSFargateService
   LoadBalancerDNS:
-    Description: "DNS name of the Load Balancer"
-    Value: !GetAtt ApplicationLoadBalancer.DNSName
-
-  LogGroupName:
-    Description: "Name of the CloudWatch Log Group"
-    Value: !Ref LogGroup
+    Description: "DNS del Load Balancer"
+    Value: !GetAtt LoadBalancer.DNSName
