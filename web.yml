@@ -57,8 +57,9 @@ Resources:
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
       DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+        - FixedResponseConfig:
+            StatusCode: 200
+          Type: fixed-response
       Port: 80
       Protocol: HTTP
 
