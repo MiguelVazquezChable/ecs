@@ -18,7 +18,7 @@ Resources:
       Memory: "512"
       ContainerDefinitions:
         - Name: "web-container"
-          Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/arces-web-repo"
+          Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/python"
           PortMappings:
             - ContainerPort: 80
           LogConfiguration:
