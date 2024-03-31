@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Plantilla CloudFormation para desplegar un servicio ECS Fargate para un sitio web.
+Description: CloudFormation template to deploy an ECS Fargate service for a web application.
 
 Resources:
   ECSCluster:
@@ -18,13 +18,13 @@ Resources:
       Memory: "512"
       ContainerDefinitions:
         - Name: "web-container"
-          Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/python"
+          Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/python:latest"
           PortMappings:
             - ContainerPort: 80
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: "ecs-logs"
+              awslogs-group: "/ecs/web-app"
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: "ecs"
 
@@ -56,6 +56,7 @@ Resources:
         - !ImportValue PublicSubnet2Id
       SecurityGroups:
         - !ImportValue LoadBalancerSecurityGroupId
+      Scheme: internet-facing
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -72,16 +73,20 @@ Resources:
     Properties:
       Port: 80
       Protocol: HTTP
-      TargetType: ip  # Tipo de objetivo configurado como 'ip'.
       VpcId: !ImportValue VPCId
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: "/"
+      Matcher:
+        HttpCode: "200"
 
 Outputs:
   ECSClusterName:
-    Description: "Nombre del cluster ECS"
+    Description: "Name of the ECS cluster"
     Value: !Ref ECSCluster
   ECSFargateServiceArn:
-    Description: "ARN del servicio ECS Fargate"
+    Description: "ARN of the ECS Fargate service"
     Value: !Ref ECSFargateService
   LoadBalancerDNS:
-    Description: "DNS del Load Balancer"
+    Description: "DNS of the Load Balancer"
     Value: !GetAtt LoadBalancer.DNSName
