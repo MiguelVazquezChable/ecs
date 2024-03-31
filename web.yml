@@ -14,8 +14,8 @@ Resources:
         - FARGATE
       ExecutionRoleArn: !ImportValue ECSExecutionRole
       TaskRoleArn: !ImportValue ECSTaskRole
-      Cpu: "256"
-      Memory: "512"
+      Cpu: "1024"
+      Memory: "3072"
       ContainerDefinitions:
         - Name: "web-container"
           Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/python:latest"
@@ -24,6 +24,7 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
+              awslogs-create-group: "true"
               awslogs-group: "/ecs/web-app"
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: "ecs"
@@ -39,8 +40,8 @@ Resources:
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets:
-            - !ImportValue PublicSubnet1Id
-            - !ImportValue PublicSubnet2Id
+            - !ImportValue PrivateSubnet1Id
+            - !ImportValue PrivateSubnet2Id
           SecurityGroups:
             - !ImportValue AppSecurityGroupId
       LoadBalancers:
