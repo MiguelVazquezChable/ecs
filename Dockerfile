@@ -1,20 +1,20 @@
-# Use an official Python runtime as a parent image
-FROM python:3.8-slim
+# Use an official base image
+FROM ubuntu:latest
 
-# Set the working directory in the container
-WORKDIR /app
+# Install Apache2
+RUN apt-get update && \
+    apt-get install -y apache2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy the current directory contents into the container at /app
-COPY . /app
+# Copy your website files into the default apache directory
+COPY index.html /var/www/html/ 
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Set the working directory to the apache2 directory
+WORKDIR /var/www/html
 
-# Make port 80 available to the world outside this container
+# Expose port 80 to the outside
 EXPOSE 80
 
-# Define environment variable
-ENV NAME World
-
-# Run app.py when the container launches
-CMD ["python", "app.py"]                     
+# Start Apache2 in the foreground
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
