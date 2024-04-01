@@ -28,6 +28,6 @@ WORKDIR /var/www
 COPY . /var/www
 
 # Expose port 9000 and start php-fpm server
-EXPOSE 80
+EXPOSE 9000
 CMD ["php-fpm"]
 
