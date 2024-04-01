@@ -1,4 +1,4 @@
-FROM php:7.4-fpm
+FROM php:7.4-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -12,22 +12,20 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev
 
-# Configure the gd extension to use both png and jpeg
+# Configure the gd extension
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Get latest Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Enable Apache modules
+RUN a2enmod rewrite headers
 
 # Set working directory
-WORKDIR /var/www
+WORKDIR /var/www/html
 
 # Copy existing application directory contents
-COPY . /var/www
+COPY . /var/www/html
 
-# Expose port 9000 and start php-fpm server
-EXPOSE 9000
-CMD ["php-fpm"]
-
+# Expose port 80
+EXPOSE 80
