@@ -35,15 +35,18 @@ WORKDIR /var/www/html
 # Copy the application files to the container
 COPY . /var/www/html
 
+# Install Composer dependencies
+RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
+
+# Fix permissions for Laravel storage and bootstrap cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
 # Change the document root to the public directory
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 
 # Update the default apache site with the config we created.
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# Fix permissions for Laravel storage and bootstrap cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Expose port 80
 EXPOSE 80
