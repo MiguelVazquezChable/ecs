@@ -10,22 +10,43 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     libzip-dev \
     libjpeg-dev \
-    libfreetype6-dev
+    libfreetype6-dev \
+    git \
+    curl
 
-# Configure the gd extension
+# Clear out the local repository of retrieved package files
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configure the gd extension to use both png and jpeg
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Enable Apache modules
-RUN a2enmod rewrite headers
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
 
-# Set working directory
+# Get latest Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set the working directory to the Laravel app directory
 WORKDIR /var/www/html
 
-# Copy existing application directory contents
+# Copy the application files to the container
 COPY . /var/www/html
+
+# Change the document root to the public directory
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+
+# Update the default apache site with the config we created.
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Fix permissions for Laravel storage and bootstrap cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Expose port 80
 EXPOSE 80
+
+# Start Apache in the foreground
+CMD ["apache2-foreground"]
