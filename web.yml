@@ -12,8 +12,12 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      ExecutionRoleArn: !ImportValue ECSExecutionRole
-      TaskRoleArn: !ImportValue ECSTaskRole
+      ExecutionRoleArn: 
+        Fn::ImportValue:
+          "iam-roles-dev-ECSExecutionRoleArn"
+      TaskRoleArn: 
+        Fn::ImportValue:
+          "iam-roles-dev-ECSTaskRoleArn"
       Cpu: "1024"
       Memory: "3072"
       ContainerDefinitions:
@@ -21,22 +25,18 @@ Resources:
           Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/python:latest"
           PortMappings:
             - ContainerPort: 80
-          Environment:  # Definir variables de entorno estáticas si es necesario
-            - Name: "EXAMPLE_ENV_VARIABLE"
-              Value: "some-value"
-          Secrets:  # Añadir esta sección para definir los secretos
+          Secrets:
             - Name: "DATABASE_HOST"
-              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_HOST-secret-key"
+              ValueFrom: "arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre"
             - Name: "DATABASE_USER"
-              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_USER-secret-key"
+              ValueFrom: "arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre"
             - Name: "DATABASE_PASSWORD"
-              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_PASSWORD-secret-key"
+              ValueFrom: "arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre"
             - Name: "DATABASE_NAME"
-              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_NAME-secret-key"
+              ValueFrom: "arn:aws:secretsmanager:us-east-2:977685339165:secret:mariadb-secrets-dev-oylFre"
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-create-group: "true"
               awslogs-group: "/ecs/web-app"
               awslogs-region: !Ref "AWS::Region"
               awslogs-stream-prefix: "ecs"
@@ -87,7 +87,6 @@ Resources:
       Port: 80
       Protocol: HTTP
       VpcId: !ImportValue VPCId
-      TargetType: ip
       HealthCheckEnabled: true
       HealthCheckPath: "/"
       Matcher:
@@ -97,9 +96,11 @@ Outputs:
   ECSClusterName:
     Description: "Name of the ECS cluster"
     Value: !Ref ECSCluster
+
   ECSFargateServiceArn:
     Description: "ARN of the ECS Fargate service"
     Value: !Ref ECSFargateService
+
   LoadBalancerDNS:
-    Description: "DNS of the Load Balancer"
+    Description: "DNS name of the load balancer"
     Value: !GetAtt LoadBalancer.DNSName
