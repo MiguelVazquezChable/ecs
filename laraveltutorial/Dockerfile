@@ -32,28 +32,31 @@ WORKDIR /var/www/html
 # Copy the application code to the container
 COPY . /var/www/html
 
+# Ensure the SQLite database file exists and has the correct permissions
+RUN touch /var/www/html/database/database.sqlite
+RUN chown -R www-data:www-data /var/www/html
+
 # Copy .env.example to .env, this can be replaced by actual .env for production
 COPY .env.example /var/www/html/.env
 
 # Install Composer dependencies
-RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader && \
-    php artisan key:generate --force && \
-    php artisan config:cache && \
+RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader
+
+# Generate application key
+RUN php artisan key:generate --force
+
+# Run database migrations
+RUN php artisan migrate --force
+
+# Cache configuration, routes and views
+RUN php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache
-
-# Ensure the SQLite database file exists and has the correct permissions
-RUN touch /var/www/html/database/database.sqlite && \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database && \
-    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
 # Update the document root to point to the Laravel public directory
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# Change ownership of our applications
-RUN chown -R www-data:www-data /var/www/html
 
 # Expose port 80
 EXPOSE 80
