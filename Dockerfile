@@ -1,20 +1,20 @@
-# Use the official Node.js 14 image as a parent image
-FROM node:14
+# Use an official base image
+FROM ubuntu:latest
 
-# Set the working directory inside the container
-WORKDIR /usr/src/app
+# Install Apache2
+RUN apt-get update && \
+    apt-get install -y apache2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy package.json and package-lock.json (if available) to the container
-COPY package*.json ./
+# Copy your website files into the default apache directory
+COPY index.html /var/www/html/ 
 
-# Install any dependencies
-RUN npm install
+# Set the working directory to the apache2 directory
+WORKDIR /var/www/html
 
-# Copy the rest of your app's source code from your host to your image filesystem.
-COPY . .
+# Expose port 80 to the outside
+EXPOSE 80
 
-# Make port 3000 available to the world outside this container
-EXPOSE 3000
-
-# Define the command to run your app using CMD which defines your runtime
-CMD ["node", "index.js"]
+# Start Apache2 in the foreground
+CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
