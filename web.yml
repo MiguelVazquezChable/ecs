@@ -21,6 +21,18 @@ Resources:
           Image: "977685339165.dkr.ecr.us-east-2.amazonaws.com/python:latest"
           PortMappings:
             - ContainerPort: 80
+          Environment:  # Definir variables de entorno estáticas si es necesario
+            - Name: "EXAMPLE_ENV_VARIABLE"
+              Value: "some-value"
+          Secrets:  # Añadir esta sección para definir los secretos
+            - Name: "DATABASE_HOST"
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_HOST-secret-key"
+            - Name: "DATABASE_USER"
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_USER-secret-key"
+            - Name: "DATABASE_PASSWORD"
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_PASSWORD-secret-key"
+            - Name: "DATABASE_NAME"
+              ValueFrom: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:DATABASE_NAME-secret-key"
           LogConfiguration:
             LogDriver: awslogs
             Options:
