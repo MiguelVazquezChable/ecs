@@ -1,3 +1,4 @@
+# Use PHP 8.2 with Apache
 FROM php:8.2-apache
 
 # Install system dependencies
@@ -31,10 +32,8 @@ WORKDIR /var/www/html
 # Copy the application code to the container
 COPY . /var/www/html
 
-# Ensure the SQLite database file exists and has the correct permissions
-RUN touch /var/www/html/database/database.sqlite && \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database && \
-    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
+# Copy .env.example to .env, this can be replaced by actual .env for production
+COPY .env.example /var/www/html/.env
 
 # Install Composer dependencies
 RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoloader && \
@@ -43,8 +42,10 @@ RUN composer install --no-interaction --no-dev --prefer-dist --optimize-autoload
     php artisan route:cache && \
     php artisan view:cache
 
-# Copy .env.example to .env, this can be replaced by actual .env for production
-COPY .env.example /var/www/html/.env
+# Ensure the SQLite database file exists and has the correct permissions
+RUN touch /var/www/html/database/database.sqlite && \
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database && \
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
 # Update the document root to point to the Laravel public directory
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
